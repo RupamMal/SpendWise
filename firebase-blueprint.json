@@ -1,0 +1,40 @@
+{
+  "entities": {
+    "UserConfig": {
+      "title": "User Configuration",
+      "description": "Stores user financial settings and balances.",
+      "type": "object",
+      "properties": {
+        "initialBalance": { "type": "number", "description": "Starting balance for the month" },
+        "monthlyLimit": { "type": "number", "description": "Max spending allowed per month" },
+        "currentBalance": { "type": "number", "description": "Running total of money in account" },
+        "lastResetDate": { "type": "string", "format": "date-time", "description": "When the balance was last initialized" }
+      },
+      "required": ["initialBalance", "monthlyLimit", "currentBalance"]
+    },
+    "Transaction": {
+      "title": "Expense Transaction",
+      "description": "Details of a credit or debit operation.",
+      "type": "object",
+      "properties": {
+        "amount": { "type": "number", "description": "Transaction amount" },
+        "type": { "type": "string", "enum": ["credit", "debit"], "description": "Direction of money flow" },
+        "category": { "type": "string", "description": "Expense category (e.g., Food, Transport)" },
+        "description": { "type": "string", "description": "Notes from the receipt or user" },
+        "date": { "type": "string", "format": "date-time", "description": "When the transaction occurred" },
+        "screenshotRef": { "type": "string", "description": "Reference to the processed image or status" }
+      },
+      "required": ["amount", "type", "category", "date"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserConfig",
+      "description": "Direct user settings"
+    },
+    "/users/{userId}/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "History of user transactions"
+    }
+  }
+}

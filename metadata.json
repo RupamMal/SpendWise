@@ -1,0 +1,6 @@
+{
+  "name": "SpendWise AI",
+  "description": "An AI-powered expense tracker that analyzes payment screenshots to categorize and track your spending against a monthly limit.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": []
+}

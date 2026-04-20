@@ -1,0 +1,70 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Validation Helpers ---
+    
+    function isValidUserConfig(data) {
+      return data.keys().hasAll(['initialBalance', 'monthlyLimit', 'currentBalance']) 
+        && data.initialBalance is number 
+        && data.monthlyLimit is number 
+        && data.currentBalance is number
+        && (!('lastResetDate' in data) || data.lastResetDate is string);
+    }
+
+    function isValidTransaction(data) {
+      return data.keys().hasAll(['amount', 'type', 'category', 'date'])
+        && data.amount is number
+        && (data.type == 'credit' || data.type == 'debit')
+        && data.category is string && data.category.size() <= 64
+        && data.date is string
+        && (!('description' in data) || (data.description is string && data.description.size() <= 200))
+        && (!('screenshotRef' in data) || (data.screenshotRef is string && data.screenshotRef.size() <= 1024));
+    }
+
+    // --- Rules ---
+
+    // User Config
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow create: if isOwner(userId) && isValidId(userId) && isValidUserConfig(incoming());
+      allow update: if isOwner(userId) && isValidId(userId) && isValidUserConfig(incoming());
+      // Delete not allowed via client for safety
+    }
+
+    // Transactions
+    match /users/{userId}/transactions/{transactionId} {
+      allow list: if isOwner(userId) && isValidId(userId);
+      allow get: if isOwner(userId) && isValidId(userId) && isValidId(transactionId);
+      allow create: if isOwner(userId) && isValidId(userId) && isValidId(transactionId) && isValidTransaction(incoming());
+      allow update: if isOwner(userId) && isValidId(userId) && isValidId(transactionId) && isValidTransaction(incoming())
+        && incoming().diff(existing()).affectedKeys().hasOnly(['category', 'description']); // Only some things can change
+      allow delete: if isOwner(userId) && isValidId(userId) && isValidId(transactionId);
+    }
+  }
+}
